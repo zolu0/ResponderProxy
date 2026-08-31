@@ -6,3 +6,13 @@
 4. Run `npm start` and leave it open while Discord is running.
 
 The server binds only to `127.0.0.1`. X credentials remain in the local `.env` file.
+
+`GET /x/posts` fetches original posts (excluding replies and reposts) from:
+
+- `David_Ornstein`
+- `FabrizioRomano`
+- `JacobsBen`
+- `Matt_Law_DT`
+- `NizaarKinsella`
+
+The Vencord plugin polls this endpoint once per minute and tracks a separate last-seen post ID for every account.

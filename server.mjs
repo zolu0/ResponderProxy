@@ -3,8 +3,14 @@ import express from "express";
 
 const app = express();
 const port = Number(process.env.PORT || 3210);
-const fabrizioUsername = process.env.X_USERNAME || "Shaguz9";
-let fabrizioUserId;
+const xUsernames = [
+    "David_Ornstein",
+    "FabrizioRomano",
+    "JacobsBen",
+    "Matt_Law_DT",
+    "NizaarKinsella"
+];
+const xUserIds = new Map();
 
 app.use(express.json());
 app.use((request, response, next) => {
@@ -26,36 +32,45 @@ async function xRequest(path) {
     return body;
 }
 
-async function getFabrizioUserId() {
-    if (fabrizioUserId) return fabrizioUserId;
-    const body = await xRequest(`/2/users/by/username/${fabrizioUsername}`);
-    fabrizioUserId = body.data?.id;
-    if (!fabrizioUserId) throw new Error("X did not return Fabrizio Romano's user ID");
-    return fabrizioUserId;
+async function getXUserId(username) {
+    if (xUserIds.has(username)) return xUserIds.get(username);
+    const body = await xRequest(`/2/users/by/username/${username}`);
+    const userId = body.data?.id;
+    if (!userId) throw new Error(`X did not return a user ID for ${username}`);
+    xUserIds.set(username, userId);
+    return userId;
 }
 
-app.get("/fabrizio/posts", async (request, response) => {
+app.get("/x/posts", async (request, response) => {
     try {
-        const userId = await getFabrizioUserId();
-        const params = new URLSearchParams({
-            max_results: "10",
-            exclude: "retweets,replies",
-            "tweet.fields": "created_at"
-        });
-        if (typeof request.query.since_id === "string" && /^\d+$/.test(request.query.since_id)) {
-            params.set("since_id", request.query.since_id);
+        let sinceIds = {};
+        if (typeof request.query.since_ids === "string") {
+            const parsed = JSON.parse(request.query.since_ids);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) sinceIds = parsed;
         }
 
-        const body = await xRequest(`/2/users/${userId}/tweets?${params}`);
-        response.json({
-            posts: (body.data || []).map(post => ({
+        const accountPosts = await Promise.all(xUsernames.map(async username => {
+            const userId = await getXUserId(username);
+            const params = new URLSearchParams({
+                max_results: "10",
+                exclude: "retweets,replies",
+                "tweet.fields": "created_at"
+            });
+            if (typeof sinceIds[username] === "string" && /^\d+$/.test(sinceIds[username])) {
+                params.set("since_id", sinceIds[username]);
+            }
+
+            const body = await xRequest(`/2/users/${userId}/tweets?${params}`);
+            return (body.data || []).map(post => ({
                 id: post.id,
-                text: post.text,
+                username,
                 createdAt: post.created_at
-            }))
-        });
+            }));
+        }));
+
+        response.json({ posts: accountPosts.flat() });
     } catch (error) {
-        console.error("Fabrizio feed request failed:", error);
+        console.error("X feed request failed:", error);
         response.status(502).json({ error: String(error.message || error) });
     }
 });
