@@ -3,7 +3,7 @@ import express from "express";
 
 const app = express();
 const port = Number(process.env.PORT || 3210);
-const fabrizioUsername = "FabrizioRomano";
+const fabrizioUsername = process.env.X_USERNAME || "Shaguz9";
 let fabrizioUserId;
 
 app.use(express.json());
