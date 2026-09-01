@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { isBigSixNews } from './club-filter.mjs';
 
 const app = express();
 const port = Number(process.env.PORT || 3210);
@@ -66,11 +67,13 @@ app.get('/x/posts', async (request, response) => {
         }
 
         const body = await xRequest(`/2/users/${userId}/tweets?${params}`);
-        return (body.data || []).map((post) => ({
-          id: post.id,
-          username,
-          createdAt: post.created_at,
-        }));
+        return (body.data || [])
+          .filter((post) => isBigSixNews(post.text))
+          .map((post) => ({
+            id: post.id,
+            username,
+            createdAt: post.created_at,
+          }));
       }),
     );
 
